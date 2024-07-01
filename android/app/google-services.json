@@ -1,0 +1,76 @@
+{
+  "project_info": {
+    "project_number": "759422759332",
+    "project_id": "kudoswareassignment-c5d97",
+    "storage_bucket": "kudoswareassignment-c5d97.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:759422759332:android:e52fd06c95471092cd1131",
+        "android_client_info": {
+          "package_name": "chat.finance.chatfinance"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "759422759332-p3b8kl11i0hv28mtpgk4r5ns2ff84eik.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "chat.finance.chatfinance",
+            "certificate_hash": "0024447a1e1125fd150d09fd1d16952e83641a68"
+          }
+        },
+        {
+          "client_id": "759422759332-7im279u1f5ev6dut07814aegvigikvie.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA1w2WRcMlf63ZAMcKh3WuAZeINhMwQ4AA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "759422759332-7im279u1f5ev6dut07814aegvigikvie.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:759422759332:android:c623ac29fd5e02b7cd1131",
+        "android_client_info": {
+          "package_name": "kudosware.com.kudosware_assignment"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "759422759332-7im279u1f5ev6dut07814aegvigikvie.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA1w2WRcMlf63ZAMcKh3WuAZeINhMwQ4AA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "759422759332-7im279u1f5ev6dut07814aegvigikvie.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
