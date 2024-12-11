@@ -1,3 +1,5 @@
+import 'package:chatfinance/Screens/agoraCall.dart';
+import 'package:chatfinance/helper/show_toast.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:modal_progress_hud_nsn/modal_progress_hud_nsn.dart';
@@ -15,14 +17,14 @@ class Homescreen extends StatefulWidget {
 class _HomescreenState extends State<Homescreen> {
   bool spin = false;
   bool isLogged = false;
-  bool issignup = true;
-  String forgotpassword = 'Forget Password?';
+  bool isSignUp = true;
+  String forgotPassword = 'Forget Password?';
   String login = 'LOGIN';
-  String signuptext = 'Don\'t have an Account?';
+  String signUpText = 'Don\'t have an Account?';
   String signup = 'Sign Up';
   String welcome = 'Welcome Back!';
-  String welcomsub = 'Login to proceed';
-  String hinttext = 'Enter name (optional)';
+  String welcomeSub = 'Login to proceed';
+  String hintText = 'Enter name (optional)';
   TextEditingController controller1 = TextEditingController();
   TextEditingController controller2 = TextEditingController();
   TextEditingController controller3 = TextEditingController();
@@ -31,58 +33,62 @@ class _HomescreenState extends State<Homescreen> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final GoogleSignIn _googleSignIn = GoogleSignIn();
   final FirebaseFirestore cloud = FirebaseFirestore.instance;
-  String reciverid ='';
+  String receiverId ='';
   late String message;
-  late String myemail;
+  late String myEmail;
   double paddingValue = 0.0;
+  final ScrollController _scrollController = ScrollController();
+  final GoogleSignIn googleSignIn = GoogleSignIn();
+  FocusNode focusNode = FocusNode();
 
-  void loginfunction(){
+
+  void loginFunction(){
     setState(() {
-      forgotpassword = 'Forget Password?';
+      forgotPassword = 'Forget Password?';
       login = 'LOGIN';
-      signuptext = 'Don\'t have an Account?';
+      signUpText = 'Don\'t have an Account?';
       signup = 'Sign Up';
       welcome = 'Welcome Back!';
-      welcomsub = 'Login to proceed';
-      hinttext = 'Enter name (optional)';
+      welcomeSub = 'Login to proceed';
+      hintText = 'Enter name (optional)';
     });
-    issignup = true;
+    isSignUp = true;
     controller2.clear();
     controller1.clear();
     controller3.clear();
   }
 
-  void signupfunction(){
+  void signupFunction(){
     setState(() {
-      forgotpassword = 'Verify Email via verification link';
+      forgotPassword = 'Verify Email via verification link';
       login = 'SIGN UP';
-      signuptext = 'Already have an account?';
+      signUpText = 'Already have an account?';
       signup = 'Login';
       welcome = 'Welcome!';
-      welcomsub = 'Create new account';
-      hinttext = 'Enter name';
+      welcomeSub = 'Create new account';
+      hintText = 'Enter name';
     });
-    issignup = false;
+    isSignUp = false;
     controller2.clear();
     controller1.clear();
     controller3.clear();
   }
 
-  Future<void> signupprocess() async{
+  Future<void> signUpProcess() async{
     setState(() {
       spin = true;
     });
     try{
-      UserCredential? newuser;
-      newuser = await FirebaseAuth.instance.createUserWithEmailAndPassword(
+      UserCredential? newUser;
+      newUser = await FirebaseAuth.instance.createUserWithEmailAndPassword(
           email: email, password: password);
-      User user = newuser.user!;
+      User user = newUser.user!;
       await user.sendEmailVerification();
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Verification Email sent to ${user.email}. Please verify to Proceed')));
-      loginfunction();
+      showToast(isError: false, message: 'Verification Email sent to ${user.email}. Please verify to Proceed');
+      loginFunction();
       controller1.clear();
       controller2.clear();
-      cloud.collection('userlist').add({
+      cloud.collection('user_list').add({
         'name': name,
         'email': user.email,
       });
@@ -91,9 +97,7 @@ class _HomescreenState extends State<Homescreen> {
       });
     }
     catch(e){
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to register: $e')),
-      );
+      showToast(isError: false, message: 'Failed to register: $e');
       controller2.clear();
       setState(() {
         spin = false;
@@ -101,7 +105,7 @@ class _HomescreenState extends State<Homescreen> {
     }
   }
 
-  void loginprocess() async {
+  void loginProcess() async {
     setState(() {
       spin = true;
     });
@@ -109,7 +113,7 @@ class _HomescreenState extends State<Homescreen> {
       final fire = FirebaseAuth.instance;
       final user = await fire.signInWithEmailAndPassword(email: email, password: password);
       User? userdata = user.user;
-      myemail = email;
+      myEmail = email;
       controller1.clear();
       controller2.clear();
       if(userdata!.emailVerified){
@@ -124,9 +128,7 @@ class _HomescreenState extends State<Homescreen> {
       }
     }
     catch(e){
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('$e')),
-      );
+      showToast(isError: false, message: '$e');
       controller2.clear();
       setState(() {
         spin = false;
@@ -139,8 +141,10 @@ class _HomescreenState extends State<Homescreen> {
       spin = true;
     });
     welcome = 'Welcome!';
-    welcomsub = 'Create new account';
+    welcomeSub = 'Create new account';
     try {
+      await googleSignIn.signOut();
+      // await googleSignIn.disconnect();
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
       final GoogleSignInAuthentication googleAuth = await googleUser!
           .authentication;
@@ -153,23 +157,34 @@ class _HomescreenState extends State<Homescreen> {
       return userCredential.user;
     }
     catch(e){
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+      showToast(isError: false, message: "$e");
       spin = false;
     }
+    return null;
   }
 
-  void googelsign() async {
+  void googleSign() async {
     User? user = await _signInWithGoogle();
     if (user != null) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Sign in successful: ${user.displayName}')));
+      final QuerySnapshot existingUser = await cloud
+          .collection('user_list')
+          .where('email', isEqualTo: user.email)
+          .get();
+
+      if (existingUser.docs.isEmpty) {
+        await cloud.collection('user_list').add({
+          'name': user.displayName,
+          'email': user.email,
+          'imageUrl': user.photoURL,
+        });
+        showToast(isError: false, message: "New user added: ${user.displayName}");
+      } else {
+        showToast(isError: false, message: "Welcome back, ${user.displayName}!");
+      }
+
       isLogged = true;
       welcome = 'Home';
-      myemail = user.email!;
-      cloud.collection('userlist').add({
-        'name': user.displayName,
-        'email' : user.email,
-        'imageurl': user.photoURL,
-      });
+      myEmail = user.email!;
     }
     setState(() {
       spin = false;
@@ -177,31 +192,24 @@ class _HomescreenState extends State<Homescreen> {
   }
 
   Future<void> sendMessage(String message) async {
-    if(reciverid != ''){
+    if(receiverId != ''){
       User? user = _auth.currentUser;
       if (user == null) {
         throw Exception('Something went wrong');
       }
-      String chatId = getChatId(user.email!, reciverid);
+      String chatId = getChatId(user.email!, receiverId);
       await cloud.collection('messages').doc(chatId).collection('chats').add({
         'senderEmail': user.email,
-        'receiverEmail': reciverid,
+        'receiverEmail': receiverId,
         'message': message,
         'timestamp': FieldValue.serverTimestamp(),
       });
     }
     else{
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text(
-          'Please select someone to chat',
-          style: TextStyle(
-            color: Colors.white,
-          ),
-        ),
-        backgroundColor: Colors.deepPurpleAccent,)
-      );
+      showToast(isError: false, message: "Please select one to chat");
     }
   }
+
   String getChatId(String email1, String email2) {
     return email1.hashCode <= email2.hashCode ? '$email1-$email2' : '$email2-$email1';
   }
@@ -210,33 +218,46 @@ class _HomescreenState extends State<Homescreen> {
     return cloud.collection('messages').doc(chatId).collection('chats').orderBy('timestamp').snapshots();
   }
 
-  Future<void> signout() async{
+  Future<void> signOut() async{
     await _auth.signOut();
+  }
+
+  void _scrollToBottom() {
+    if (_scrollController.hasClients) {
+      _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.deepPurpleAccent,
-      body: SizedBox(
-        height: MediaQuery.sizeOf(context).height*1,
-        child: ListView.builder(
-          itemCount: 1,
-          itemBuilder: (BuildContext context, int index) {
-            return  isLogged == false ?  logginscreen(context): utility(context);
-          },
+    return SafeArea(
+      child: Scaffold(
+        body: Container(
+          height: MediaQuery.sizeOf(context).height*1-1,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+              Colors.deepPurpleAccent,
+              Colors.deepPurpleAccent,
+              Colors.purple.shade50
+            ]),
+          ),
+          child: isLogged == false ?  logInScreen(context): utility(context)
         ),
       ),
     );
   }
 
-  logginscreen(BuildContext context) {
+  logInScreen(BuildContext context) {
     return Stack(
-        children: [Column(
+        children: [
+          Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             SizedBox(
-              height: MediaQuery.of(context).size.height*.15,
+              height: MediaQuery.of(context).size.height*.1,
               child: Padding(
                 padding: const EdgeInsets.only(left: 20),
                 child: Column(
@@ -253,7 +274,7 @@ class _HomescreenState extends State<Homescreen> {
                       ),
                     ),
                     Text(
-                      welcomsub,
+                      welcomeSub,
                       style: GoogleFonts.unna(
                           textStyle: TextStyle(
                               color: Colors.purple.shade50,
@@ -310,7 +331,7 @@ class _HomescreenState extends State<Homescreen> {
                             onChanged: (value){
                               name = value;
                             },
-                            decoration: boxkadecoration1.copyWith(hintText: hinttext),
+                            decoration: boxkadecoration1.copyWith(hintText: hintText),
                           ),
                           TextField(
                             controller: controller2,
@@ -322,7 +343,7 @@ class _HomescreenState extends State<Homescreen> {
                           ),
                           TextButton(onPressed: (){
                             //Impliment forget password solution
-                          }, child: Text(forgotpassword)),
+                          }, child: Text(forgotPassword)),
                           Container(
                             height: 40,
                             width: 500,
@@ -332,7 +353,7 @@ class _HomescreenState extends State<Homescreen> {
                             ),
                             child: TextButton(onPressed: (){
                               setState(() {
-                                issignup == true? loginprocess(): signupprocess();
+                                isSignUp == true? loginProcess(): signUpProcess();
                               });
                             }, child: Text(login,
                               style: const TextStyle(
@@ -348,13 +369,13 @@ class _HomescreenState extends State<Homescreen> {
               Row(
                 children: [
                   Text(
-                    signuptext,
+                    signUpText,
                     style: const TextStyle(
                       color: Colors.grey,
                     ),
                   ),
                   TextButton(onPressed: (){
-                    issignup == true ? signupfunction():loginfunction();
+                    isSignUp == true ? signupFunction():loginFunction();
                   },
                     child: Text(signup),
                   )
@@ -363,7 +384,7 @@ class _HomescreenState extends State<Homescreen> {
               TextButton(
                   onPressed: () {
                     setState(() {
-                      googelsign();
+                      googleSign();
                     });
                   },
                   child: Container(
@@ -381,7 +402,11 @@ class _HomescreenState extends State<Homescreen> {
                         leading: CircleAvatar(
                           child: Image(image: AssetImage('images/logo.jpg'),),),
                         title: Text(
-                          'Continue with Google'
+                          'Continue with Google',
+                          softWrap: true,
+                          style: TextStyle(
+                            fontSize: 15
+                          ),
                         ),
                       ),
                     ),
@@ -394,240 +419,254 @@ class _HomescreenState extends State<Homescreen> {
   }
 
   utility(BuildContext context) {
-    return Column(
+    return ListView(
       children: [
-        SizedBox(
-          height: MediaQuery.of(context).size.height*.16,
-          child: Expanded(
-            child: StreamBuilder<QuerySnapshot>(
-              stream: cloud.collection('userlist').snapshots(),
-              builder: (context, snapshot) {
-                if (snapshot.hasData) {
-                  List<String> emails=[];
-                  List<String> names = [];
-                  final users = snapshot.data!.docs;
-                  List<Widget> userWidgets = [];
-                  for (var user in users) {
-                    final userData = user.data() as Map<String, dynamic>;
-                    final userName = userData['name'] ?? 'No Name';
-                    final userEmail = userData['email'] ?? 'No Email';
-                    final userPhotoURL = userData['imageurl'] ??
-                        'https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEiV3gpnIGEekljD3OLn8d67SU0Qs3vZQDICKltYLyv5qhHIdcA_-ZFAgQ1szymkNNM2lgrxFbrNStMshSZr3CKSJVpdX2Fl894YO_De__XUEsZyib03OlNnJ6zYbxWvImCGfj9od9h9XO20btbsIkRo35BqbZMxV-v2gBRbyy6UFcxchxV51kTrQMy-oMU/s480/360_F_470299797_UD0eoVMMSUbHCcNJCdv2t8B2g1GVqYgs.jpg';
-                    emails.add(userEmail);
-                    names.add(userName);
-                    userWidgets.add(Row(
-                      children: [
-                        Column(
+        StreamBuilder<QuerySnapshot>(
+          stream: cloud.collection('user_list').snapshots(),
+          builder: (context, snapshot) {
+            if (snapshot.hasData) {
+              List<String> emails=[];
+              List<String> names = [];
+              final users = snapshot.data!.docs;
+              List<Widget> userWidgets = [];
+              for (var user in users) {
+                final userData = user.data() as Map<String, dynamic>;
+                if(userData['email'] == myEmail)
+                  continue;
+                final userName = userData['name'] ?? 'No Name';
+                final userEmail = userData['email'] ?? 'No Email';
+                final userPhotoURL = userData['imageUrl'] ??
+                    'https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEiV3gpnIGEekljD3OLn8d67SU0Qs3vZQDICKltYLyv5qhHIdcA_-ZFAgQ1szymkNNM2lgrxFbrNStMshSZr3CKSJVpdX2Fl894YO_De__XUEsZyib03OlNnJ6zYbxWvImCGfj9od9h9XO20btbsIkRo35BqbZMxV-v2gBRbyy6UFcxchxV51kTrQMy-oMU/s480/360_F_470299797_UD0eoVMMSUbHCcNJCdv2t8B2g1GVqYgs.jpg';
+                emails.add(userEmail);
+                names.add(userName);
+                userWidgets.add(
+                    Padding(
+                      padding: const EdgeInsets.all(8.0),
+                      child: Column(
+                        children: [
+                      Container(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(360),
+                          border: Border.all(color: userName == name ? Colors.green: Colors.pink,
+                          width: 3),
+                          color: userName == name ? Colors.green: Colors.transparent,
+                        ),
+                        child: CircleAvatar(
+                          backgroundImage: NetworkImage(userPhotoURL,),
+                          radius: 35,
+                        ),
+                      ),
+                      Text(userName,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold
+                      ),),
+                                        ],
+                                      ),
+                    ));
+              }
+              return SizedBox(
+                width: double.maxFinite,
+                height: MediaQuery.of(context).size.height*.15,
+                child: ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: userWidgets.length,
+                  itemBuilder: (context, index){
+                    return appUsers(
+                        context,
+                        userWidgets[index],
+                        emails[index],
+                        names[index]
+                    );
+                  },
+                ),
+              );
+            }
+            else {
+              return const CircularProgressIndicator();
+            }
+
+          }
+        ),
+        Stack(
+          children: [
+            Expanded(
+              child: Container(
+                // height: MediaQuery.of(context).size.height*.82,
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.only(topLeft: Radius.circular(25), topRight: Radius.circular(25)),
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Material(
+                      elevation: 5,
+                      borderRadius: const BorderRadius.only(topLeft: Radius.circular(25), topRight: Radius.circular(25)),
+                      color: Colors.purpleAccent.shade400,
+                      child: Padding(
+                        padding: const EdgeInsets.all(8.0),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceAround,
                           children: [
-                            CircleAvatar(
-                              backgroundImage: NetworkImage(userPhotoURL),
-                              radius: 35,
+                            SizedBox(
+                              height: 35,
+                              child: IconButton(onPressed: () {
+                                signOut();
+                                setState(() {
+                                  isLogged = false;
+                                });
+                              },
+                                icon: const Icon(Icons.power_settings_new,
+                                  color: Colors.white,),
+                              ),
                             ),
-                            Text(userName,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold
-                            ),),
+                            Text(
+                                name!=''? 'Chatting with $name': 'Please select someone to chat',
+                              style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontStyle: FontStyle.italic,
+                                  fontSize: 15
+                              ),
+                            ),
+                            IconButton(onPressed: () {
+                              Navigator.push(context,
+                              MaterialPageRoute(builder: (context) => VideoCallScreen(
+                                channel: "chatChannel",
+                              )));
+                            },
+                              icon: Container(
+                                padding: const EdgeInsets.all(4),
+                                decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(30)
+                                ),
+                                child: const Icon(Icons.video_call_outlined,
+                                    color: Colors.green,
+                                size: 25,),
+                              ),
+                              tooltip: "video call",
+                                ),
                           ],
                         ),
-                      ],
-                    ));
-                  }
-                  return ListView.builder(
-                    scrollDirection: Axis.horizontal,
-                    itemCount: userWidgets.length,
-                    itemBuilder: (context, index){
-                      return PaddingItem(
-                          context,
-                          userWidgets[index],
-                          emails[index],
-                          names[index]
-                      );
-                    },
-                  );
-                }
-                else {
-                  return const CircularProgressIndicator();
-                }
-
-              }
-            ),
-          ),
-        ),
-        Container(
-          height: MediaQuery.of(context).size.height*.82,
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.only(topLeft: Radius.circular(25), topRight: Radius.circular(25)),
-          ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Material(
-                elevation: 5,
-                borderRadius: const BorderRadius.only(topLeft: Radius.circular(25), topRight: Radius.circular(25)),
-                color: Colors.purpleAccent.shade400,
-                child: Padding(
-                  padding: const EdgeInsets.all(8.0),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children: [
-                      SizedBox(
-                        height: 35,
-                        child: IconButton(onPressed: () {
-                          signout();
-                          setState(() {
-                            isLogged = false;
-                          });
-                        },
-                          icon: const Icon(Icons.power_settings_new,
-                            color: Colors.white,),
-                        ),
                       ),
-                      Text(
-                          name!=''? 'Chatting with $name': 'Please select someone to chat',
-                        style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontStyle: FontStyle.italic,
-                            fontSize: 15
-                        ),
-                      ),
-                      SizedBox(
-                        height: 35,
-                        child: FloatingActionButton.extended(onPressed: () {
-                        },
-                          label: const Text('Pay',
-                          style: TextStyle(
-                            color: Colors.white
-                          ),),
-                          icon: const Icon(Icons.currency_rupee,
-                            color: Colors.white,),
-                          backgroundColor: Colors.orange,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              Expanded(
-                child: StreamBuilder(
-                    stream: getMessages(getChatId(myemail, reciverid)),
-                    builder: (context, snapshot) {
-                      if(!snapshot.hasData) {
-                        return const Center(
-                          child: Text(
-                            'Start chat',
-                          ),
-                        );
-                      }
-                      var messages = snapshot.data!.docs;
-                      return ListView.builder(
-                        itemCount: messages.length,
-                        itemBuilder: (context, index){
-                          var message = messages[index];
-                          bool isme = message['senderEmail'] == myemail;
-                          return ListTile(
-                            title: Align(
-                              alignment: isme? Alignment.centerRight: Alignment.centerLeft,
-                              child: Material(
-                                color: isme? Colors.purpleAccent.shade400: Colors.purpleAccent.shade700,
-                                borderRadius: isme? const BorderRadius.only(
-                                    topRight: Radius.circular(30),
-                                      topLeft: Radius.circular(30),
-                                    bottomLeft: Radius.circular(30),
-                                  ): const BorderRadius.only(
-                                    topLeft: Radius.circular(30),
-                                    topRight: Radius.circular(30),
-                                    bottomRight: Radius.circular(30),
-                                  ),
-                                child: Padding(
-                                  padding: const EdgeInsets.all(8.0),
-                                  child: Text(
-                                    message['message'],
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 16
+                    ),
+                    SizedBox(
+                      height: MediaQuery.of(context).size.height*.7 - MediaQuery.of(context).viewInsets.bottom - 30,
+                      child: StreamBuilder(
+                          stream: getMessages(getChatId(myEmail, receiverId)),
+                          builder: (context, snapshot) {
+                            if(!snapshot.hasData) {
+                              return const Center(
+                                child: Text(
+                                  'Start chat',
+                                ),
+                              );
+                            }
+                            var messages = snapshot.data!.docs;
+                            WidgetsBinding.instance.addPostFrameCallback((_) {
+                              _scrollToBottom();
+                            });
+                            return ListView.builder(
+                              controller: _scrollController,
+                              itemCount: messages.length,
+                              itemBuilder: (context, index){
+                                var message = messages[index];
+                                bool isMe = message['senderEmail'] == myEmail;
+                                return ListTile(
+                                  title: Align(
+                                    alignment: isMe? Alignment.centerRight: Alignment.centerLeft,
+                                    child: Material(
+                                      color: isMe? Colors.purpleAccent.shade400: Colors.purpleAccent.shade700,
+                                      borderRadius: isMe? const BorderRadius.only(
+                                          topRight: Radius.circular(30),
+                                            topLeft: Radius.circular(30),
+                                          bottomLeft: Radius.circular(30),
+                                        ): const BorderRadius.only(
+                                          topLeft: Radius.circular(30),
+                                          topRight: Radius.circular(30),
+                                          bottomRight: Radius.circular(30),
+                                        ),
+                                      child: Padding(
+                                        padding: const EdgeInsets.all(8.0),
+                                        child: Text(
+                                          message['message'],
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 16
+                                          ),
+                                          softWrap: true,
+                                        ),
+                                      ),
                                     ),
-                                    softWrap: true,
                                   ),
+                                );
+                              },
+                            );
+                          }
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.all(8.0),
+                      child: Material(
+                        borderRadius: BorderRadius.circular(30),
+                        elevation: 10,
+                        color: Colors.purple.shade50,
+                        child: Row(
+                          children: [
+                            SizedBox(
+                              width: MediaQuery.of(context).size.width*.8,
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 2),
+                                child: TextField(
+                                  focusNode: focusNode,
+                                  onChanged: (value){
+                                    message = value;
+                                  },
+                                  controller: controller4,
+                                  decoration: const InputDecoration(
+                                      hintText: 'Type message',
+                                      border: InputBorder.none),
                                 ),
                               ),
                             ),
-                          );
-                        },
-                      );
-                    }
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: Material(
-                  borderRadius: BorderRadius.circular(30),
-                  elevation: 10,
-                  color: Colors.purple.shade50,
-                  child: Row(
-                    children: [
-                      SizedBox(
-                        width: MediaQuery.of(context).size.width*.83,
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 2),
-                          child: TextField(
-                            onChanged: (value){
-                              message = value;
+                            IconButton(onPressed: (){
+                              sendMessage(controller4.text);
+                              controller4.clear();
+                              focusNode.unfocus();
                             },
-                            controller: controller4,
-                            decoration: const InputDecoration(
-                                hintText: 'Type message',
-                            border: InputBorder.none),
-                          ),
+                                icon: const Icon(Icons.send,
+                                  color: Colors.deepPurpleAccent,))
+                          ],
                         ),
                       ),
-                      IconButton(onPressed: (){
-                        sendMessage(controller4.text);
-                        controller4.clear();
-                      },
-                          icon: const Icon(Icons.send,
-                            color: Colors.deepPurpleAccent,))
-                    ],
-                  ),
+                    )
+                  ],
                 ),
-              )
-            ],
-          ),
+              ),
+            ),
+            // Positioned(
+            //   bottom: 0,
+            //     child:
+            //
+            // ),
+          ],
         )
       ],
     );
   }
 
-  PaddingItem(BuildContext context, Widget child, String email, String name1){
+  appUsers(BuildContext context, Widget child, String email, String name1){
     return GestureDetector(
       onTap: (){
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:
-        Text(
-          'Press & hold a second to chat with $name',
-        ),
-          backgroundColor: Colors.deepPurpleAccent,
-          duration: const Duration(milliseconds: 200),));
-      },
-      onTapDown: (TapDownDetails details) {
         setState(() {
-          paddingValue = 5.0;
-          reciverid = email;
           name = name1;
+          receiverId = email;
         });
       },
-      onTapUp: (TapUpDetails details) {
-        setState(() {
-          paddingValue = 0.0;
-        });
-      },
-      child: AnimatedPadding(
-        duration: const Duration(milliseconds: 100),
-        padding: EdgeInsets.only(top: 24+paddingValue, left: 10+paddingValue, right: 10+paddingValue, bottom: 10+paddingValue),
-        child: child,
-      ),
+      child: child,
     );
   }
 }

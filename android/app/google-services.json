@@ -7,6 +7,78 @@
   "client": [
     {
       "client_info": {
+        "mobilesdk_app_id": "1:759422759332:android:453a480af9f99e80cd1131",
+        "android_client_info": {
+          "package_name": "app.saansmonks.doctro.doctor"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "759422759332-7im279u1f5ev6dut07814aegvigikvie.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA1w2WRcMlf63ZAMcKh3WuAZeINhMwQ4AA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "759422759332-7im279u1f5ev6dut07814aegvigikvie.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "759422759332-ss3d0mv0dhtd381n670pg0aust37egtt.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.mighty.chat1"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:759422759332:android:c66b32f2b80cc7d5cd1131",
+        "android_client_info": {
+          "package_name": "app.saansmonks.doctro.patient"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "759422759332-7im279u1f5ev6dut07814aegvigikvie.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA1w2WRcMlf63ZAMcKh3WuAZeINhMwQ4AA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "759422759332-7im279u1f5ev6dut07814aegvigikvie.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "759422759332-ss3d0mv0dhtd381n670pg0aust37egtt.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.mighty.chat1"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
         "mobilesdk_app_id": "1:759422759332:android:e52fd06c95471092cd1131",
         "android_client_info": {
           "package_name": "chat.finance.chatfinance"
@@ -37,6 +109,49 @@
             {
               "client_id": "759422759332-7im279u1f5ev6dut07814aegvigikvie.apps.googleusercontent.com",
               "client_type": 3
+            },
+            {
+              "client_id": "759422759332-ss3d0mv0dhtd381n670pg0aust37egtt.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.mighty.chat1"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:759422759332:android:3e120a6649e14d58cd1131",
+        "android_client_info": {
+          "package_name": "com.fond.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "759422759332-7im279u1f5ev6dut07814aegvigikvie.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA1w2WRcMlf63ZAMcKh3WuAZeINhMwQ4AA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "759422759332-7im279u1f5ev6dut07814aegvigikvie.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "759422759332-ss3d0mv0dhtd381n670pg0aust37egtt.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.mighty.chat1"
+              }
             }
           ]
         }
@@ -66,6 +181,13 @@
             {
               "client_id": "759422759332-7im279u1f5ev6dut07814aegvigikvie.apps.googleusercontent.com",
               "client_type": 3
+            },
+            {
+              "client_id": "759422759332-ss3d0mv0dhtd381n670pg0aust37egtt.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.mighty.chat1"
+              }
             }
           ]
         }
