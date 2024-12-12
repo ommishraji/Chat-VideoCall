@@ -1,11 +1,12 @@
 import 'package:chatfinance/helper/app_constants.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:agora_rtc_engine/agora_rtc_engine.dart';
 import 'package:permission_handler/permission_handler.dart';
 const token = "007eJxTYIiLf/Dnyd2zP8KPPYq2Lyr9VvN92asuxSeFM18qvHhw7e0PBQYTCwujZFOjNFNLIyOT1MRki+Q046RkSyNzU2MDi8Qk029XwtMbAhkZhH6LszIyQCCIz82QnJFY4pyRmJeXmsPAAABVuChT";
 class VideoCallScreen extends StatefulWidget {
-  const VideoCallScreen({super.key, required this.channel});
-  final String channel;
+  const VideoCallScreen({super.key, required this.channel, required this.token, required this.caller, required this.receiver});
+  final String channel, token, caller, receiver;
   @override
   _VideoCallScreenState createState() => _VideoCallScreenState();
 }
@@ -17,6 +18,7 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
   bool _isMuted = false;
   bool _isCameraOn = true;
   bool showOptions = true;
+  final FirebaseFirestore cloud = FirebaseFirestore.instance;
   @override
   void initState() {
     super.initState();
@@ -63,13 +65,23 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
     await _engine.setClientRole(role: ClientRoleType.clientRoleBroadcaster);
     await _engine.enableVideo();
     await _engine.startPreview();
-
     await _engine.joinChannel(
       token: token,
       channelId: widget.channel,
       uid: 0,
       options: const ChannelMediaOptions(),
     );
+  }
+
+  Future<void> freeLine(String email) async {
+    final QuerySnapshot existingUser = await cloud
+        .collection('user_list')
+        .where('email', isEqualTo: email)
+        .get();
+    await cloud.collection("user_list").doc(existingUser.docs.first.id).update(
+        {
+          "line": "free"
+        });
   }
 
   @override
@@ -95,6 +107,13 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
             onPressed: () {
               _engine.leaveChannel();
               Navigator.pop(context);
+              FirebaseFirestore.instance
+                  .collection('calls')
+                  .doc(widget.channel)
+                  .update({"callStatus": "ended"});
+              freeLine(widget.caller);
+              freeLine(widget.receiver);
+
             },
             icon: const Icon(Icons.call_end, color: Colors.red),
             tooltip: 'End Call',

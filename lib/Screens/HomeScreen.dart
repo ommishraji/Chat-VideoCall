@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:chatfinance/Screens/agoraCall.dart';
 import 'package:chatfinance/helper/show_toast.dart';
 import 'package:flutter/material.dart';
@@ -40,6 +42,8 @@ class _HomescreenState extends State<Homescreen> {
   final ScrollController _scrollController = ScrollController();
   final GoogleSignIn googleSignIn = GoogleSignIn();
   FocusNode focusNode = FocusNode();
+  int incomingCallIndex = -1;
+  bool lineBusy = false;
 
 
   void loginFunction(){
@@ -91,6 +95,7 @@ class _HomescreenState extends State<Homescreen> {
       cloud.collection('user_list').add({
         'name': name,
         'email': user.email,
+        'line': 'free'
       });
       setState(() {
         spin = false;
@@ -122,6 +127,14 @@ class _HomescreenState extends State<Homescreen> {
           spin = false;
         });
         welcome = 'Hello';
+        final QuerySnapshot existingUser = await cloud
+            .collection('user_list')
+            .where('email', isEqualTo: userdata.email)
+            .get();
+        await cloud.collection("user_list").doc(existingUser.docs.first.id).update(
+            {
+              "line": "free"
+            });
       }
       else{
         throw Exception('Verification link has been sent to your email id. Please verify to proceed');
@@ -176,9 +189,14 @@ class _HomescreenState extends State<Homescreen> {
           'name': user.displayName,
           'email': user.email,
           'imageUrl': user.photoURL,
+          'line': "free",
         });
         showToast(isError: false, message: "New user added: ${user.displayName}");
       } else {
+        await cloud.collection("user_list").doc(existingUser.docs.first.id).update(
+            {
+              "line": "free"
+            });
         showToast(isError: false, message: "Welcome back, ${user.displayName}!");
       }
 
@@ -207,6 +225,44 @@ class _HomescreenState extends State<Homescreen> {
     }
     else{
       showToast(isError: false, message: "Please select one to chat");
+    }
+  }
+
+  Future<void> initiateVideoCall() async {
+    if(receiverId != ''){
+      User? user = _auth.currentUser;
+      if (user == null) {
+        throw Exception('Something went wrong');
+      }
+      else {
+        String videoCallChannelName = getChatId(user.email!, receiverId);
+        await cloud.collection('calls').doc(videoCallChannelName).set({
+          'dialer': user.email,
+          'receiver': receiverId,
+          'token': "007eJxTYIiLf/Dnyd2zP8KPPYq2Lyr9VvN92asuxSeFM18qvHhw7e0PBQYTCwujZFOjNFNLIyOT1MRki+Q046RkSyNzU2MDi8Qk029XwtMbAhkZhH6LszIyQCCIz82QnJFY4pyRmJeXmsPAAABVuChT",
+          'channelName': videoCallChannelName,
+          'callStatus': "ringing",
+          'timestamp': FieldValue.serverTimestamp(),
+        });
+        final QuerySnapshot existingUser = await cloud
+            .collection('user_list')
+            .where('email', isEqualTo: myEmail)
+            .get();
+        await cloud.collection("user_list").doc(existingUser.docs.first.id).update(
+            {
+              "line": "busy"
+            });
+        Navigator.push(context,
+            MaterialPageRoute(builder: (context) => VideoCallScreen(
+              channel: videoCallChannelName,
+              token: "007eJxTYIiLf/Dnyd2zP8KPPYq2Lyr9VvN92asuxSeFM18qvHhw7e0PBQYTCwujZFOjNFNLIyOT1MRki+Q046RkSyNzU2MDi8Qk029XwtMbAhkZhH6LszIyQCCIz82QnJFY4pyRmJeXmsPAAABVuChT",
+              caller: user.email.toString(),
+              receiver: receiverId,
+            )));
+      }
+    }
+    else{
+      showToast(isError: false, message: "Please select one to call");
     }
   }
 
@@ -490,161 +546,203 @@ class _HomescreenState extends State<Homescreen> {
         ),
         Stack(
           children: [
-            Expanded(
-              child: Container(
-                // height: MediaQuery.of(context).size.height*.82,
-                decoration: const BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.only(topLeft: Radius.circular(25), topRight: Radius.circular(25)),
-                ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Material(
-                      elevation: 5,
-                      borderRadius: const BorderRadius.only(topLeft: Radius.circular(25), topRight: Radius.circular(25)),
-                      color: Colors.purpleAccent.shade400,
-                      child: Padding(
-                        padding: const EdgeInsets.all(8.0),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceAround,
-                          children: [
-                            SizedBox(
-                              height: 35,
-                              child: IconButton(onPressed: () {
-                                signOut();
-                                setState(() {
-                                  isLogged = false;
-                                });
-                              },
-                                icon: const Icon(Icons.power_settings_new,
-                                  color: Colors.white,),
+            Container(
+              // height: MediaQuery.of(context).size.height*.82,
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.only(topLeft: Radius.circular(25), topRight: Radius.circular(25)),
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  StreamBuilder<QuerySnapshot>(
+                    stream: cloud.collection("calls").snapshots(),
+                    builder: (context, snapshot) {
+                      var calls = snapshot.data!.docs;
+                      int newIncomingCallIndex = -1;
+                      for(int a=0; a<calls.length; a++){
+                        if(calls[a]['receiver'] == myEmail && calls[a]['callStatus'] == "ringing") {
+                          newIncomingCallIndex = a;
+                          break;
+                        }
+                      }
+                      WidgetsBinding.instance.addPostFrameCallback((_) async {
+                        if (incomingCallIndex != newIncomingCallIndex) {
+                          setState(() {
+                            incomingCallIndex = newIncomingCallIndex;
+                          });
+                         await Future.delayed(const Duration(seconds: 10));
+                         setState(() {
+                           incomingCallIndex = -1;
+                         });
+                        }
+                      });
+                      return Material(
+                        elevation: 5,
+                        borderRadius: const BorderRadius.only(topLeft: Radius.circular(25), topRight: Radius.circular(25)),
+                        color: lineBusy ? Colors.red : incomingCallIndex == -1 ? Colors.purpleAccent.shade400 : Colors.green,
+                        child: Padding(
+                          padding: const EdgeInsets.all(8.0),
+                          child: lineBusy ? const LineBusy() : Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceAround,
+                            children: [
+                              SizedBox(
+                                height: 35,
+                                child: IconButton(onPressed: () {
+                                  signOut();
+                                  setState(() {
+                                    isLogged = false;
+                                  });
+                                },
+                                  icon: const Icon(Icons.power_settings_new,
+                                    color: Colors.white,),
+                                ),
                               ),
-                            ),
-                            Text(
-                                name!=''? 'Chatting with $name': 'Please select someone to chat',
-                              style: const TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                  fontStyle: FontStyle.italic,
-                                  fontSize: 15
-                              ),
-                            ),
-                            IconButton(onPressed: () {
-                              Navigator.push(context,
-                              MaterialPageRoute(builder: (context) => VideoCallScreen(
-                                channel: "chatChannel",
-                              )));
-                            },
-                              icon: Container(
-                                padding: const EdgeInsets.all(4),
-                                decoration: BoxDecoration(
+                              Text(
+                                  name!=''? 'Chatting with $name': 'Please select someone to chat',
+                                style: const TextStyle(
                                     color: Colors.white,
-                                    borderRadius: BorderRadius.circular(30)
+                                    fontWeight: FontWeight.bold,
+                                    fontStyle: FontStyle.italic,
+                                    fontSize: 15
                                 ),
-                                child: const Icon(Icons.video_call_outlined,
-                                    color: Colors.green,
-                                size: 25,),
                               ),
-                              tooltip: "video call",
+                              IconButton(onPressed: () async {
+                                final QuerySnapshot receiverData = await cloud
+                                    .collection('user_list')
+                                    .where('email', isEqualTo: receiverId)
+                                    .get();
+                                if (receiverData.docs.isNotEmpty) {
+                                  if (receiverData.docs.first['line'] == "free") {
+                                    await initiateVideoCall();
+                                  } else {
+                                    setState((){
+                                      lineBusy = true;
+                                    });
+                                    await Future.delayed(Duration(seconds: 3));
+                                    setState(() {
+                                      lineBusy = false;
+                                    });
+                                  }
+                                }
+
+                                // if(existingUser.docs.first['line'] == "free") {
+                                //   await initiateVideoCall();
+                                // }
+                                // else{
+                                //   showToast(isError: false, message: "Line Busy");
+                                // }
+                              },
+                                icon: Container(
+                                  padding: const EdgeInsets.all(4),
+                                  decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius: BorderRadius.circular(30)
+                                  ),
+                                  child: const Icon(Icons.video_call_outlined,
+                                      color: Colors.green,
+                                  size: 25,),
                                 ),
-                          ],
+                                tooltip: "video call",
+                                  ),
+                            ],
+                          ),
                         ),
-                      ),
-                    ),
-                    SizedBox(
-                      height: MediaQuery.of(context).size.height*.7 - MediaQuery.of(context).viewInsets.bottom - 30,
-                      child: StreamBuilder(
-                          stream: getMessages(getChatId(myEmail, receiverId)),
-                          builder: (context, snapshot) {
-                            if(!snapshot.hasData) {
-                              return const Center(
-                                child: Text(
-                                  'Start chat',
-                                ),
-                              );
-                            }
-                            var messages = snapshot.data!.docs;
-                            WidgetsBinding.instance.addPostFrameCallback((_) {
-                              _scrollToBottom();
-                            });
-                            return ListView.builder(
-                              controller: _scrollController,
-                              itemCount: messages.length,
-                              itemBuilder: (context, index){
-                                var message = messages[index];
-                                bool isMe = message['senderEmail'] == myEmail;
-                                return ListTile(
-                                  title: Align(
-                                    alignment: isMe? Alignment.centerRight: Alignment.centerLeft,
-                                    child: Material(
-                                      color: isMe? Colors.purpleAccent.shade400: Colors.purpleAccent.shade700,
-                                      borderRadius: isMe? const BorderRadius.only(
-                                          topRight: Radius.circular(30),
-                                            topLeft: Radius.circular(30),
-                                          bottomLeft: Radius.circular(30),
-                                        ): const BorderRadius.only(
+                      );
+                    }
+                  ),
+                  SizedBox(
+                    height: MediaQuery.of(context).size.height*.7 - MediaQuery.of(context).viewInsets.bottom - 30,
+                    child: StreamBuilder(
+                        stream: getMessages(getChatId(myEmail, receiverId)),
+                        builder: (context, snapshot) {
+                          if(!snapshot.hasData || snapshot.data != null) {
+                            return const Center(
+                              child: Text(
+                                'Start chat',
+                              ),
+                            );
+                          }
+                          var messages = snapshot.data!.docs;
+                          WidgetsBinding.instance.addPostFrameCallback((_) {
+                            _scrollToBottom();
+                          });
+                          return ListView.builder(
+                            controller: _scrollController,
+                            itemCount: messages.length,
+                            itemBuilder: (context, index){
+                              var message = messages[index];
+                              bool isMe = message['senderEmail'] == myEmail;
+                              return ListTile(
+                                title: Align(
+                                  alignment: isMe? Alignment.centerRight: Alignment.centerLeft,
+                                  child: Material(
+                                    color: isMe? Colors.purpleAccent.shade400: Colors.purpleAccent.shade700,
+                                    borderRadius: isMe? const BorderRadius.only(
+                                        topRight: Radius.circular(30),
                                           topLeft: Radius.circular(30),
-                                          topRight: Radius.circular(30),
-                                          bottomRight: Radius.circular(30),
+                                        bottomLeft: Radius.circular(30),
+                                      ): const BorderRadius.only(
+                                        topLeft: Radius.circular(30),
+                                        topRight: Radius.circular(30),
+                                        bottomRight: Radius.circular(30),
+                                      ),
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(8.0),
+                                      child: Text(
+                                        message['message'],
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 16
                                         ),
-                                      child: Padding(
-                                        padding: const EdgeInsets.all(8.0),
-                                        child: Text(
-                                          message['message'],
-                                          style: const TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 16
-                                          ),
-                                          softWrap: true,
-                                        ),
+                                        softWrap: true,
                                       ),
                                     ),
                                   ),
-                                );
-                              },
-                            );
-                          }
-                      ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.all(8.0),
-                      child: Material(
-                        borderRadius: BorderRadius.circular(30),
-                        elevation: 10,
-                        color: Colors.purple.shade50,
-                        child: Row(
-                          children: [
-                            SizedBox(
-                              width: MediaQuery.of(context).size.width*.8,
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 2),
-                                child: TextField(
-                                  focusNode: focusNode,
-                                  onChanged: (value){
-                                    message = value;
-                                  },
-                                  controller: controller4,
-                                  decoration: const InputDecoration(
-                                      hintText: 'Type message',
-                                      border: InputBorder.none),
                                 ),
+                              );
+                            },
+                          );
+                        }
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: Material(
+                      borderRadius: BorderRadius.circular(30),
+                      elevation: 10,
+                      color: Colors.purple.shade50,
+                      child: Row(
+                        children: [
+                          SizedBox(
+                            width: MediaQuery.of(context).size.width*.8,
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 2),
+                              child: TextField(
+                                focusNode: focusNode,
+                                onChanged: (value){
+                                  message = value;
+                                },
+                                controller: controller4,
+                                decoration: const InputDecoration(
+                                    hintText: 'Type message',
+                                    border: InputBorder.none),
                               ),
                             ),
-                            IconButton(onPressed: (){
-                              sendMessage(controller4.text);
-                              controller4.clear();
-                              focusNode.unfocus();
-                            },
-                                icon: const Icon(Icons.send,
-                                  color: Colors.deepPurpleAccent,))
-                          ],
-                        ),
+                          ),
+                          IconButton(onPressed: (){
+                            sendMessage(controller4.text);
+                            controller4.clear();
+                            focusNode.unfocus();
+                          },
+                              icon: const Icon(Icons.send,
+                                color: Colors.deepPurpleAccent,))
+                        ],
                       ),
-                    )
-                  ],
-                ),
+                    ),
+                  )
+                ],
               ),
             ),
             // Positioned(
@@ -667,6 +765,55 @@ class _HomescreenState extends State<Homescreen> {
         });
       },
       child: child,
+    );
+  }
+}
+
+
+class LineBusy extends StatefulWidget {
+  const LineBusy({super.key});
+
+  @override
+  _LineBusyState createState() => _LineBusyState();
+}
+
+class _LineBusyState extends State<LineBusy> {
+  bool _isVisible = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _startBlinking();
+  }
+
+  void _startBlinking() {
+    Timer.periodic(const Duration(milliseconds: 500), (timer) {
+      if (!mounted) {
+        timer.cancel();
+      } else {
+        setState(() {
+          _isVisible = !_isVisible;
+        });
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 35,
+      child: Center(
+        child: Text(
+          "Line Busy",
+          style: TextStyle(
+            color: _isVisible
+                ? Colors.white : Colors.red,
+            fontWeight: FontWeight.w400,
+            fontSize: 25,
+            fontStyle: FontStyle.italic,
+          ),
+        ),
+      ),
     );
   }
 }
