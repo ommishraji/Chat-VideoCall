@@ -1,7 +1,8 @@
 import 'dart:async';
-
+import 'package:assets_audio_player/assets_audio_player.dart';
 import 'package:chatfinance/Screens/agoraCall.dart';
 import 'package:chatfinance/helper/show_toast.dart';
+import 'package:chatfinance/helper/audio_player.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:modal_progress_hud_nsn/modal_progress_hud_nsn.dart';
@@ -9,6 +10,9 @@ import '../constants/consts.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+
+import '../helper/token_generator.dart';
+
 class Homescreen extends StatefulWidget {
   const Homescreen({super.key});
 
@@ -44,7 +48,7 @@ class _HomescreenState extends State<Homescreen> {
   FocusNode focusNode = FocusNode();
   int incomingCallIndex = -1;
   bool lineBusy = false;
-
+  String? lastMessageId;
 
   void loginFunction(){
     setState(() {
@@ -238,8 +242,10 @@ class _HomescreenState extends State<Homescreen> {
         String videoCallChannelName = getChatId(user.email!, receiverId);
         await cloud.collection('calls').doc(videoCallChannelName).set({
           'dialer': user.email,
+          'dialerName': user.displayName,
           'receiver': receiverId,
-          'token': "007eJxTYIiLf/Dnyd2zP8KPPYq2Lyr9VvN92asuxSeFM18qvHhw7e0PBQYTCwujZFOjNFNLIyOT1MRki+Q046RkSyNzU2MDi8Qk029XwtMbAhkZhH6LszIyQCCIz82QnJFY4pyRmJeXmsPAAABVuChT",
+          'receiverName': name,
+          'token': "007eJxTYLifeOP14op//jZnssUvF/Nqqe9+4c3DepOhdmrN4eClt7kUGEwsLIySTY3STC2NjExSE5MtktOMk5ItjcxNjQ0sEpNMU3Ni0hsCGRlC9Y8zMEIhiM/EkJnCwAAAB2gdzg==",
           'channelName': videoCallChannelName,
           'callStatus': "ringing",
           'timestamp': FieldValue.serverTimestamp(),
@@ -255,9 +261,10 @@ class _HomescreenState extends State<Homescreen> {
         Navigator.push(context,
             MaterialPageRoute(builder: (context) => VideoCallScreen(
               channel: videoCallChannelName,
-              token: "007eJxTYIiLf/Dnyd2zP8KPPYq2Lyr9VvN92asuxSeFM18qvHhw7e0PBQYTCwujZFOjNFNLIyOT1MRki+Q046RkSyNzU2MDi8Qk029XwtMbAhkZhH6LszIyQCCIz82QnJFY4pyRmJeXmsPAAABVuChT",
+              token: "007eJxTYLifeOP14op//jZnssUvF/Nqqe9+4c3DepOhdmrN4eClt7kUGEwsLIySTY3STC2NjExSE5MtktOMk5ItjcxNjQ0sEpNMU3Ni0hsCGRlC9Y8zMEIhiM/EkJnCwAAAB2gdzg==",
               caller: user.email.toString(),
               receiver: receiverId,
+              isCaller: true,
             )));
       }
     }
@@ -487,39 +494,43 @@ class _HomescreenState extends State<Homescreen> {
               List<Widget> userWidgets = [];
               for (var user in users) {
                 final userData = user.data() as Map<String, dynamic>;
-                if(userData['email'] == myEmail)
-                  continue;
-                final userName = userData['name'] ?? 'No Name';
-                final userEmail = userData['email'] ?? 'No Email';
-                final userPhotoURL = userData['imageUrl'] ??
-                    'https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEiV3gpnIGEekljD3OLn8d67SU0Qs3vZQDICKltYLyv5qhHIdcA_-ZFAgQ1szymkNNM2lgrxFbrNStMshSZr3CKSJVpdX2Fl894YO_De__XUEsZyib03OlNnJ6zYbxWvImCGfj9od9h9XO20btbsIkRo35BqbZMxV-v2gBRbyy6UFcxchxV51kTrQMy-oMU/s480/360_F_470299797_UD0eoVMMSUbHCcNJCdv2t8B2g1GVqYgs.jpg';
-                emails.add(userEmail);
-                names.add(userName);
-                userWidgets.add(
-                    Padding(
-                      padding: const EdgeInsets.all(8.0),
-                      child: Column(
-                        children: [
-                      Container(
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(360),
-                          border: Border.all(color: userName == name ? Colors.green: Colors.pink,
-                          width: 3),
-                          color: userName == name ? Colors.green: Colors.transparent,
+                if(userData['email'] != myEmail) {
+                  var userName = userData['name'] ?? 'No Name';
+                  userName = userName.toString().length > 15 ? "${userName.toString().substring(0, 12)}..." : userName;
+                  final userEmail = userData['email'] ?? 'No Email';
+                  final userPhotoURL = userData['imageUrl'] ??
+                      'https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEiV3gpnIGEekljD3OLn8d67SU0Qs3vZQDICKltYLyv5qhHIdcA_-ZFAgQ1szymkNNM2lgrxFbrNStMshSZr3CKSJVpdX2Fl894YO_De__XUEsZyib03OlNnJ6zYbxWvImCGfj9od9h9XO20btbsIkRo35BqbZMxV-v2gBRbyy6UFcxchxV51kTrQMy-oMU/s480/360_F_470299797_UD0eoVMMSUbHCcNJCdv2t8B2g1GVqYgs.jpg';
+                  emails.add(userEmail);
+                  names.add(userName);
+                  userWidgets.add(
+                      Padding(
+                        padding: const EdgeInsets.all(8.0),
+                        child: Column(
+                          children: [
+                            Container(
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(360),
+                                border: Border.all(color: userName == name
+                                    ? Colors.green
+                                    : Colors.pink,
+                                    width: 3),
+                                color: userName == name ? Colors.green : Colors
+                                    .transparent,
+                              ),
+                              child: CircleAvatar(
+                                backgroundImage: NetworkImage(userPhotoURL,),
+                                radius: 35,
+                              ),
+                            ),
+                            Text(userName,
+                              style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold
+                              ),),
+                          ],
                         ),
-                        child: CircleAvatar(
-                          backgroundImage: NetworkImage(userPhotoURL,),
-                          radius: 35,
-                        ),
-                      ),
-                      Text(userName,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold
-                      ),),
-                                        ],
-                                      ),
-                    ));
+                      ));
+                }
               }
               return SizedBox(
                 width: double.maxFinite,
@@ -581,72 +592,109 @@ class _HomescreenState extends State<Homescreen> {
                       return Material(
                         elevation: 5,
                         borderRadius: const BorderRadius.only(topLeft: Radius.circular(25), topRight: Radius.circular(25)),
-                        color: lineBusy ? Colors.red : incomingCallIndex == -1 ? Colors.purpleAccent.shade400 : Colors.green,
-                        child: Padding(
-                          padding: const EdgeInsets.all(8.0),
-                          child: lineBusy ? const LineBusy() : Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceAround,
-                            children: [
-                              SizedBox(
-                                height: 35,
-                                child: IconButton(onPressed: () {
-                                  signOut();
-                                  setState(() {
-                                    isLogged = false;
-                                  });
-                                },
-                                  icon: const Icon(Icons.power_settings_new,
-                                    color: Colors.white,),
-                                ),
-                              ),
-                              Text(
-                                  name!=''? 'Chatting with $name': 'Please select someone to chat',
-                                style: const TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
-                                    fontStyle: FontStyle.italic,
-                                    fontSize: 15
-                                ),
-                              ),
-                              IconButton(onPressed: () async {
-                                final QuerySnapshot receiverData = await cloud
-                                    .collection('user_list')
-                                    .where('email', isEqualTo: receiverId)
-                                    .get();
-                                if (receiverData.docs.isNotEmpty) {
-                                  if (receiverData.docs.first['line'] == "free") {
-                                    await initiateVideoCall();
-                                  } else {
-                                    setState((){
-                                      lineBusy = true;
-                                    });
-                                    await Future.delayed(Duration(seconds: 3));
+                        child: Container(
+                          decoration: BoxDecoration(
+                              borderRadius: const BorderRadius.only(topLeft: Radius.circular(25), topRight: Radius.circular(25)),
+                            gradient: lineBusy ? const LinearGradient(colors: [
+                              Colors.red,
+                              Colors.redAccent,
+                            ]) : incomingCallIndex != -1 ? const LinearGradient(colors: [
+                              Color(0xFF89216B),
+                              Color(0xFFDA4453),
+                            ]): LinearGradient(colors: [
+                              Colors.purpleAccent.shade400,
+                              Colors.purpleAccent.shade400,
+                            ])
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.all(8.0),
+                            child: lineBusy ? const LineBusy() : incomingCallIndex != -1 ? IncomingCall(
+                              token: snapshot.data!.docs[incomingCallIndex]['token'],
+                              channelName: snapshot.data?.docs[incomingCallIndex]['channelName'],
+                              caller: snapshot.data?.docs[incomingCallIndex]['dialerName'],
+                              callerId: snapshot.data?.docs[incomingCallIndex]['dialer'],
+                              receiverId: snapshot.data?.docs[incomingCallIndex]['receiver'],
+                              receiver: snapshot.data?.docs[incomingCallIndex]['receiverName'],
+                            ) :
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceAround,
+                              children: [
+                                SizedBox(
+                                  height: 35,
+                                  child: IconButton(onPressed: () {
+                                    signOut();
                                     setState(() {
-                                      lineBusy = false;
+                                      isLogged = false;
                                     });
-                                  }
-                                }
-
-                                // if(existingUser.docs.first['line'] == "free") {
-                                //   await initiateVideoCall();
-                                // }
-                                // else{
-                                //   showToast(isError: false, message: "Line Busy");
-                                // }
-                              },
-                                icon: Container(
-                                  padding: const EdgeInsets.all(4),
-                                  decoration: BoxDecoration(
-                                      color: Colors.white,
-                                      borderRadius: BorderRadius.circular(30)
+                                  },
+                                    icon: const Icon(Icons.power_settings_new,
+                                      color: Colors.white,),
                                   ),
-                                  child: const Icon(Icons.video_call_outlined,
-                                      color: Colors.green,
-                                  size: 25,),
                                 ),
-                                tooltip: "video call",
+                                Text(
+                                    name!=''? 'Chatting with $name': 'Please select someone to chat',
+                                  style: const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                      fontStyle: FontStyle.italic,
+                                      fontSize: 15
                                   ),
-                            ],
+                                ),
+                                IconButton(onPressed: () async {
+                                  if(receiverId == "") {
+                                    showToast(isError: false, message: "Please select someone to call");
+                                  }
+                                  else{
+                                  final QuerySnapshot receiverData = await cloud
+                                      .collection('user_list')
+                                      .where('email', isEqualTo: receiverId)
+                                      .get();
+                                  if (receiverData.docs.isNotEmpty) {
+                                    if (receiverData.docs.first['line'] == "free") {
+                                      generateToken();
+                                      await initiateVideoCall();
+                                    } else {
+                                      setState((){
+                                        lineBusy = true;
+                                      });
+                                      await Future.delayed(const Duration(seconds: 2));
+                                      setState(() {
+                                        lineBusy = false;
+                                      });
+                                    }
+                                  }
+                                  }
+
+
+                                  // if(existingUser.docs.first['line'] == "free") {
+                                  //   await initiateVideoCall();
+                                  // }
+                                  // else{
+                                  //   showToast(isError: false, message: "Line Busy");
+                                  // }
+                                },
+                                  icon: Material(
+                                    elevation: 10,
+                                    borderRadius: BorderRadius.circular(40),
+                                    child: SizedBox(
+                                        height: 35,
+                                        width: 35,
+                                        child: Image.asset('images/video_call.png')),
+                                  ),
+                                  // icon: Container(
+                                  //   padding: const EdgeInsets.all(4),
+                                  //   decoration: BoxDecoration(
+                                  //       color: Colors.white,
+                                  //       borderRadius: BorderRadius.circular(30)
+                                  //   ),
+                                  //   child: const Icon(Icons.video_call_outlined,
+                                  //       color: Colors.green,
+                                  //   size: 25,),
+                                  // ),
+                                  tooltip: "video call",
+                                    ),
+                              ],
+                            ),
                           ),
                         ),
                       );
@@ -657,7 +705,7 @@ class _HomescreenState extends State<Homescreen> {
                     child: StreamBuilder(
                         stream: getMessages(getChatId(myEmail, receiverId)),
                         builder: (context, snapshot) {
-                          if(!snapshot.hasData || snapshot.data != null) {
+                          if(!snapshot.hasData || snapshot.data?.docs.map((doc)  => doc.data()).toList().length == 0) {
                             return const Center(
                               child: Text(
                                 'Start chat',
@@ -666,6 +714,12 @@ class _HomescreenState extends State<Homescreen> {
                           }
                           var messages = snapshot.data!.docs;
                           WidgetsBinding.instance.addPostFrameCallback((_) {
+                            String currentLastMessageId = messages.last.id;
+
+                            if (lastMessageId != currentLastMessageId) {
+                              lastMessageId = currentLastMessageId;
+                              messageReceived();
+                            }
                             _scrollToBottom();
                           });
                           return ListView.builder(
@@ -732,9 +786,15 @@ class _HomescreenState extends State<Homescreen> {
                             ),
                           ),
                           IconButton(onPressed: (){
-                            sendMessage(controller4.text);
-                            controller4.clear();
-                            focusNode.unfocus();
+                            if(controller4.text != '') {
+                              sendMessage(controller4.text);
+                              messageSent();
+                              controller4.clear();
+                              focusNode.unfocus();
+                            }
+                            else{
+                              showToast(isError: false, message: "Write your message");
+                            }
                           },
                               icon: const Icon(Icons.send,
                                 color: Colors.deepPurpleAccent,))
@@ -770,6 +830,134 @@ class _HomescreenState extends State<Homescreen> {
 }
 
 
+
+
+class IncomingCall extends StatefulWidget {
+  IncomingCall({
+    super.key,
+    required this.token,
+    required this.channelName,
+    required this.caller,
+    required this.callerId,
+    required this.receiverId,
+    required this.receiver
+  });
+  final String channelName, token, caller, callerId, receiver, receiverId;
+
+  @override
+  State<IncomingCall> createState() => _IncomingCallState();
+}
+
+class _IncomingCallState extends State<IncomingCall> {
+  final FirebaseFirestore cloud = FirebaseFirestore.instance;
+
+  Future<void> freeLine(String email) async {
+    final QuerySnapshot existingUser = await cloud
+        .collection('user_list')
+        .where('email', isEqualTo: email)
+        .get();
+    await cloud.collection("user_list").doc(existingUser.docs.first.id).update(
+        {
+          "line": "free"
+        });
+  }
+
+  AssetsAudioPlayer audioPlayer = AssetsAudioPlayer();
+
+  void play(){
+    audioPlayer.open(
+        Audio("assets/ringtone1.mp3"));
+  }
+
+  void pause(){
+    audioPlayer.dispose();
+  }
+
+  @override
+  void initState() {
+    // TODO: implement initState
+    super.initState();
+    play();
+  }
+
+  @override
+  void dispose() {
+    // TODO: implement dispose
+    super.dispose();
+    pause();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        IconButton(onPressed: (){
+          endCall();
+          freeLine(widget.callerId);
+          freeLine(widget.receiverId);
+          cloud.collection('calls')
+              .doc(widget.channelName)
+              .update({"callStatus": "ended"});
+          pause();
+        },
+          icon: SizedBox(
+              height: 35,
+              width: 35,
+              child: Image.asset('images/reject_call.png')),
+        ),
+        SizedBox(
+          width: MediaQuery.of(context).size.width*.5,
+          child: Text("Video Call from ${widget.caller}",
+            maxLines: 2,
+            textAlign: TextAlign.center,
+            softWrap: true,
+            style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+                fontSize: 16
+            ),),
+        ),
+        IconButton(onPressed: () async {
+          final QuerySnapshot existingUser = await cloud
+              .collection('user_list')
+              .where('email', isEqualTo: widget.receiverId)
+              .get();
+          await cloud.collection("user_list").doc(existingUser.docs.first.id).update(
+              {
+                "line": "busy"
+              });
+          cloud.collection('calls')
+              .doc(widget.channelName)
+              .update({"callStatus": "ongoing"});
+          Navigator.push(context, MaterialPageRoute(builder: (context) => VideoCallScreen(
+              channel: widget.channelName,
+              token: widget.token,
+              caller: widget.callerId,
+              receiver: widget.receiverId,
+            isCaller: false,
+          )));
+        },
+          icon: Material(
+            elevation: 10,
+            borderRadius: BorderRadius.circular(30),
+            child: SizedBox(
+                height: 35,
+                width: 35,
+                child: Image.asset('images/video_call.png')),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+
+
+
+
+
 class LineBusy extends StatefulWidget {
   const LineBusy({super.key});
 
@@ -783,6 +971,7 @@ class _LineBusyState extends State<LineBusy> {
   @override
   void initState() {
     super.initState();
+    busy();
     _startBlinking();
   }
 

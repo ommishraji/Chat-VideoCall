@@ -1,12 +1,14 @@
+import 'package:assets_audio_player/assets_audio_player.dart';
 import 'package:chatfinance/helper/app_constants.dart';
+import 'package:chatfinance/helper/audio_player.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:agora_rtc_engine/agora_rtc_engine.dart';
 import 'package:permission_handler/permission_handler.dart';
-const token = "007eJxTYIiLf/Dnyd2zP8KPPYq2Lyr9VvN92asuxSeFM18qvHhw7e0PBQYTCwujZFOjNFNLIyOT1MRki+Q046RkSyNzU2MDi8Qk029XwtMbAhkZhH6LszIyQCCIz82QnJFY4pyRmJeXmsPAAABVuChT";
 class VideoCallScreen extends StatefulWidget {
-  const VideoCallScreen({super.key, required this.channel, required this.token, required this.caller, required this.receiver});
+  const VideoCallScreen({super.key, required this.channel, required this.token, required this.caller, required this.receiver, required this.isCaller});
   final String channel, token, caller, receiver;
+  final bool isCaller;
   @override
   _VideoCallScreenState createState() => _VideoCallScreenState();
 }
@@ -23,6 +25,20 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
   void initState() {
     super.initState();
     initAgora();
+    if(widget.isCaller) {
+      play();
+    }
+  }
+
+  AssetsAudioPlayer audioPlayer = AssetsAudioPlayer();
+
+  void play(){
+    audioPlayer.open(
+        Audio("assets/ringing_outgoing1.mp3"));
+  }
+
+  void pause(){
+    audioPlayer.dispose();
   }
 
   Future<void> initAgora() async {
@@ -66,8 +82,8 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
     await _engine.enableVideo();
     await _engine.startPreview();
     await _engine.joinChannel(
-      token: token,
-      channelId: widget.channel,
+      token: widget.token,
+      channelId: "id",
       uid: 0,
       options: const ChannelMediaOptions(),
     );
@@ -106,14 +122,12 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
           IconButton(
             onPressed: () {
               _engine.leaveChannel();
-              Navigator.pop(context);
               FirebaseFirestore.instance
                   .collection('calls')
                   .doc(widget.channel)
                   .update({"callStatus": "ended"});
               freeLine(widget.caller);
               freeLine(widget.receiver);
-
             },
             icon: const Icon(Icons.call_end, color: Colors.red),
             tooltip: 'End Call',
@@ -162,13 +176,13 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
         controller: VideoViewController.remote(
           rtcEngine: _engine,
           canvas: VideoCanvas(uid: _remoteUid),
-          connection: RtcConnection(channelId: widget.channel),
+          connection: RtcConnection(channelId: 'id'),
         ),
       );
     } else {
       return const Center(
         child: Text(
-          'Waiting for remote user to join...',
+          'ringing...',
           style: TextStyle(color: Colors.white),
         ),
       );
@@ -181,15 +195,32 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
       backgroundColor: Colors.black,
       body: Stack(
         children: [
-          GestureDetector(
-            onTap: (){
-              setState(() {
-                showOptions = !showOptions;
-              });
-            },
-            child: Center(
-              child: _remoteVideo(),
-            ),
+          StreamBuilder<QuerySnapshot>(
+            stream: cloud.collection("calls").snapshots(),
+            builder: (context, snapshot) {
+              var calls = snapshot.data!.docs;
+              for(int a=0; a<calls.length; a++){
+                if(calls[a]['channelName'] == widget.channel && calls[a]['callStatus'] == "ended") {
+                  pause();
+                  endCall();
+                  _engine.leaveChannel();
+                  Navigator.pop(context);
+                }
+                if(calls[a]['channelName'] == widget.channel && calls[a]['callStatus'] == "ongoing"){
+                  pause();
+                }
+              }
+              return GestureDetector(
+                onTap: (){
+                  setState(() {
+                    showOptions = !showOptions;
+                  });
+                },
+                child: Center(
+                  child: _remoteVideo(),
+                ),
+              );
+            }
           ),
           Align(
             alignment: Alignment.topLeft,
