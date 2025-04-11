@@ -2,7 +2,7 @@ name: Build & Distribute Flutter App
 
 on:
   push:
-    branches: [main]
+    branches: [master]
 
 jobs:
   build-android:
